@@ -1,71 +1,187 @@
-# Getting Started with Create React App
+# testing-counter
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Unit-testing/React exercises developed with Jest + Enzyme, following the the Udemy tutorial from @flyrightsister
 
-## Available Scripts
+## challenge
 
-In the project directory, you can run:
+```jsx
+import React, { Component } from 'react';
+import './App.css';
 
-### `yarn start`
+class App extends Component {
+  state = {
+    counter: 0,
+    warning: false
+  }
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+  decrement = () => {
+    const { counter } = this.state
+    if (counter > 0) {
+      this.setState({ counter: counter - 1, warning: false })
+    } else {
+      this.setState({ warning: true })
+    }
+  }
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+  render() {
+    const { counter, warning } = this.state
+    return (
+      <div data-test="component-app">
+        <h1 data-test="counter-display">The counter is currently {counter}</h1>
+        <button
+          data-test="increment-button"
+          onClick={() => this.setState({ counter: counter + 1, warning: false })}>Increment counter</button>
+        <button
+          data-test="decrement-button"
+          onClick={() => this.decrement()}>Decrement counter</button>
+        {warning && <p data-test="warning-display">It can not be negative</p>}
+      </div>
+    );
+  }
+}
 
-### `yarn test`
+export default App;
+```
+```jsx
+import React from 'react';
+import Enzyme, { shallow } from 'enzyme';
+import EnzymeAdapter from 'enzyme-adapter-react-16';
+import App from './App';
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Enzyme.configure({ adapter: new EnzymeAdapter() });
 
-### `yarn build`
+/**
+ * Factory function to create a ShallowWrapper for the App Component
+ * @function setup
+ * @param {object} props - Component props specific for this setup
+ * @param {object} state - Initial state for setup
+ * @returns {ShallowWrapper}
+ */
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+const setup = (props = {}, state = null) => {
+  // => const wrapper = shallow(<App {...props} />);
+  if (state) wrapper.setState(state)
+  return wrapper;
+}
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+/**
+ * Return ShallowWrapper containing node with the given data-test value
+ * @function findByTestAttr
+ * @param {ShallowWrapper} wrapper - Enzyme shallow wrapper to searth within
+ * @param {string} val - Value to data-test attribute for search
+ * @returns {ShallowWrapper}
+ */
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+const findByTestAttr = (wrapper, val) => {
+  return wrapper.find(`[data-test='${val}']`);
+}
 
-### `yarn eject`
+test('renders without errors', () => {
+  const wrapper = setup();
+  const appComponent = findByTestAttr(wrapper, 'component-app');
+  expect(appComponent.length).toBe(1);
+})
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+test('renders counter display', () => {
+  const wrapper = setup();
+  const counterDisplay = findByTestAttr(wrapper, 'counter-display');
+  expect(counterDisplay.length).toBe(1);
+})
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+test('counter starts at 0', () => {
+  const wrapper = setup();
+  let initialCounterState = wrapper.state('counter');
+  expect(initialCounterState).toBe(0)
+})
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+describe('Increment', () => {
+  test('renders increment button', () => {
+    const wrapper = setup();
+    const button = findByTestAttr(wrapper, 'increment-button');
+    expect(button.length).toBe(1);
+  })
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+  test('clicking button increments counter display', () => {
+    // define the counter at 7
+    const counter = 7;
+    const wrapper = setup(null, { counter });
 
-## Learn More
+    // find button and click
+    const button = findByTestAttr(wrapper, 'increment-button');
+    button.simulate('click');
+    wrapper.update();
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+    // find counterdisplay an equal to 8
+    const counterDisplay = findByTestAttr(wrapper, 'counter-display');
+    expect(counterDisplay.text()).toContain(counter + 1);
+  })
+})
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+describe('Decrement', () => {
+  test('renders decrement button', () => {
+    const wrapper = setup();
+    const button = findByTestAttr(wrapper, 'decrement-button');
+    expect(button.length).toBe(1);
+  })
 
-### Code Splitting
+  test('clicking button decrement counter display', () => {
+    // define the counter at 5, for example
+    const counter = 5;
+    const wrapper = setup(null, { counter });
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+    // find a button to click
+    const button = findByTestAttr(wrapper, 'decrement-button');
+    button.simulate('click');
+    wrapper.update();
 
-### Analyzing the Bundle Size
+    //find counterdisplay an equal to 4
+    const counterDisplay = findByTestAttr(wrapper, 'counter-display');
+    expect(counterDisplay.text()).toContain(counter - 1);
+  })
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+  test('error does not show when not needed', () => {
+    const wrapper = setup();
+    const warningDisplay = findByTestAttr(wrapper, 'warning-display');
+    expect(warningDisplay.exists()).toBeFalsy();
+  })
 
-### Making a Progressive Web App
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+  describe('counter is 0', () => {
+    let counter;
+    let wrapper;
+    let counterDisplay;
+    beforeEach(() => {
+      counter = 0;
+      wrapper = setup(null, { counter });
+      counterDisplay = findByTestAttr(wrapper, 'counter-display');
+    })
 
-### Advanced Configuration
+    test('clicking button decrement', () => {
+      // find a button to click
+      const button = findByTestAttr(wrapper, 'decrement-button');
+      button.simulate('click');
+      wrapper.update();
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+      //find counterdisplay an equal to 0 and appears a warning message
+      const warningDisplay = findByTestAttr(wrapper, 'warning-display');
+      expect(wrapper.state().counter).toBeGreaterThanOrEqual(0)
+      expect(counterDisplay.text()).toContain(counter);
+      expect(warningDisplay.text()).toEqual('It can not be negative');
+    })
 
-### Deployment
+    test('clicking button increment', () => {
+      const warningDisplay = findByTestAttr(wrapper, 'warning-display');
+      // find a button to click
+      const button = findByTestAttr(wrapper, 'increment-button');
+      button.simulate('click');
+      wrapper.update();
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+      //find counterdisplay an equal to 1
+      const counterDisplay = findByTestAttr(wrapper, 'counter-display');
+      expect(counterDisplay.text()).toContain(counter + 1);
+      expect(warningDisplay.exists()).toBeFalsy();
+    })
+  })
+})
 
-### `yarn build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-# counter-test-challange
+```

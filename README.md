@@ -1,4 +1,4 @@
-# testing-counter
+# Counter App test challange
 
 Unit-testing/React exercises developed with Jest + Enzyme, following the the Udemy tutorial from @flyrightsister
 
